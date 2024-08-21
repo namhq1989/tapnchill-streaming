@@ -22,8 +22,8 @@ type Channel struct {
 func NewChannel(name string, files []AudioContent) Channel {
 	return Channel{
 		name:                name,
-		bufferSize:          4096,
-		delayTime:           100,
+		bufferSize:          8192,
+		delayTime:           150,
 		files:               files,
 		connPool:            NewConnectionPool(),
 		numOfConn:           0,

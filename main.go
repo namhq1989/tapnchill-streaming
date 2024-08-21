@@ -6,7 +6,27 @@ import (
 	"time"
 )
 
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests (OPTIONS)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Pass the request to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
+	mux := http.NewServeMux()
+
 	relaxingChannel := NewChannel("relaxing", []AudioContent{
 		NewAudioContent("Relaxing 1", "audios/relaxing-1.mp3", 22*time.Second, []string{"relaxing", "chilling", "focusing"}),
 		NewAudioContent("Relaxing 2", "audios/relaxing-2.mp3", 15*time.Second, []string{"relaxing", "sleeping", "focusing"}),
@@ -18,7 +38,7 @@ func main() {
 	})
 	go drivingChannel.Broadcast()
 
-	http.HandleFunc("/relaxing", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/relaxing", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "audio/mpeg")
 		w.Header().Add("Connection", "keep-alive")
 		flusher, ok := w.(http.Flusher)
@@ -44,7 +64,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/driving", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/driving", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "audio/mpeg")
 		w.Header().Add("Connection", "keep-alive")
 		flusher, ok := w.(http.Flusher)
@@ -71,5 +91,5 @@ func main() {
 	})
 
 	log.Println("Listening on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", enableCORS(mux)))
 }
