@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"time"
 )
 
 func enableCORS(next http.Handler) http.Handler {
@@ -24,71 +24,59 @@ func enableCORS(next http.Handler) http.Handler {
 	})
 }
 
+func broadcastingChannel(name string) Channel {
+	audios, err := ListMP3Files("audios/" + name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i := 0; i < len(audios); i++ {
+		fmt.Printf("%d. %s duration: %.0f seconds \n", i+1, audios[i].GetName(), audios[i].GetDuration().Seconds())
+	}
+
+	channel := NewChannel("name", audios)
+	go channel.Broadcast()
+
+	return channel
+}
+
+func broadcastingRoute(mux *http.ServeMux, id string, channel Channel) {
+	mux.HandleFunc("/"+id, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "audio/mpeg")
+		w.Header().Add("Connection", "keep-alive")
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			log.Println("Could not create flusher")
+		}
+
+		connection := NewConnection()
+		channel.AddConnection(connection)
+		log.Printf("%s has connected to the audio stream %s\n, total connection %d", r.Host, id, channel.GetNumOfConn())
+
+		for {
+			buf := <-connection.bufferChannel
+			if _, err := w.Write(buf); err != nil {
+				channel.DeleteConnection(connection)
+				log.Printf("%s's connection to the audio stream %s has been closed, total connection %d\n", r.Host, id, channel.GetNumOfConn())
+				return
+			}
+			flusher.Flush()
+			clear(connection.buffer)
+		}
+	})
+}
+
 func main() {
 	mux := http.NewServeMux()
 
-	relaxingChannel := NewChannel("relaxing", []AudioContent{
-		NewAudioContent("Relaxing 1", "audios/relaxing-1.mp3", 22*time.Second, []string{"relaxing", "chilling", "focusing"}),
-		NewAudioContent("Relaxing 2", "audios/relaxing-2.mp3", 15*time.Second, []string{"relaxing", "sleeping", "focusing"}),
-	})
-	go relaxingChannel.Broadcast()
+	chillingChannel := broadcastingChannel("chilling")
+	broadcastingRoute(mux, "chilling", chillingChannel)
 
-	drivingChannel := NewChannel("driving", []AudioContent{
-		NewAudioContent("Driving 1", "audios/driving-1.mp3", 38*time.Second, []string{"relaxing", "driving"}),
-	})
-	go drivingChannel.Broadcast()
+	gamingChannel := broadcastingChannel("gaming")
+	broadcastingRoute(mux, "gaming", gamingChannel)
 
-	mux.HandleFunc("/relaxing", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "audio/mpeg")
-		w.Header().Add("Connection", "keep-alive")
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			log.Println("Could not create flusher")
-		}
-
-		connection := NewConnection()
-		relaxingChannel.AddConnection(connection)
-		log.Printf("%s has connected to the audio stream\n", r.Host)
-
-		log.Printf("total connection %d \n", relaxingChannel.GetNumOfConn())
-
-		for {
-			buf := <-connection.bufferChannel
-			if _, err := w.Write(buf); err != nil {
-				relaxingChannel.DeleteConnection(connection)
-				log.Printf("%s's connection to the audio stream has been closed\n", r.Host)
-				return
-			}
-			flusher.Flush()
-			clear(connection.buffer)
-		}
-	})
-
-	mux.HandleFunc("/driving", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "audio/mpeg")
-		w.Header().Add("Connection", "keep-alive")
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			log.Println("Could not create flusher")
-		}
-
-		connection := NewConnection()
-		drivingChannel.AddConnection(connection)
-		log.Printf("%s has connected to the audio stream\n", r.Host)
-
-		log.Printf("total connection %d \n", relaxingChannel.GetNumOfConn())
-
-		for {
-			buf := <-connection.bufferChannel
-			if _, err := w.Write(buf); err != nil {
-				drivingChannel.DeleteConnection(connection)
-				log.Printf("%s's connection to the audio stream has been closed\n", r.Host)
-				return
-			}
-			flusher.Flush()
-			clear(connection.buffer)
-		}
-	})
+	motivatingChannel := broadcastingChannel("motivating")
+	broadcastingRoute(mux, "motivating", motivatingChannel)
 
 	log.Println("Listening on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", enableCORS(mux)))

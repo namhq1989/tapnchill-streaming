@@ -6,19 +6,14 @@ type AudioContent struct {
 	name     string
 	path     string
 	duration time.Duration
-	topics   []string
 }
 
-func NewAudioContent(name, path string, duration time.Duration, topics []string) AudioContent {
-	return AudioContent{name: name, path: path, duration: duration, topics: topics}
+func NewAudioContent(name, path string, duration time.Duration) AudioContent {
+	return AudioContent{name: name, path: path, duration: duration}
 }
 
 func (c *AudioContent) GetDuration() time.Duration {
 	return c.duration
-}
-
-func (c *AudioContent) GetTopics() []string {
-	return c.topics
 }
 
 func (c *AudioContent) GetName() string {

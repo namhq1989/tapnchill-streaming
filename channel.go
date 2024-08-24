@@ -42,8 +42,14 @@ func (c *Channel) DeleteConnection(connection *Connection) {
 	c.numOfConn--
 }
 
+func (c *Channel) calculateDelayTime(fileInfo os.FileInfo, duration time.Duration, bufferSize int) {
+	fileSize := fileInfo.Size()
+	totalBuffers := fileSize / int64(bufferSize)
+	c.delayTime = int(duration / time.Duration(totalBuffers) / time.Millisecond)
+}
+
 func (c *Channel) Broadcast() {
-	buffer := make([]byte, c.bufferSize)
+	// buffer := make([]byte, c.bufferSize)
 
 	for {
 		for _, f := range c.files {
@@ -52,6 +58,15 @@ func (c *Channel) Broadcast() {
 				log.Printf("Error opening file %s: %v", f.GetPath(), err)
 				panic(err)
 			}
+
+			fileInfo, err := file.Stat()
+			if err != nil {
+				log.Printf("Error getting file info for %s: %v", f.GetName(), err)
+				panic(err)
+			}
+
+			c.calculateDelayTime(fileInfo, f.GetDuration(), c.bufferSize)
+			buffer := make([]byte, c.bufferSize)
 
 			content, err := io.ReadAll(file)
 			if err != nil {
@@ -62,7 +77,7 @@ func (c *Channel) Broadcast() {
 			tempFile := bytes.NewReader(content)
 			ticker := time.NewTicker(time.Millisecond * time.Duration(c.delayTime))
 
-			log.Printf("Broadcasting %s, duration: %.0f seconds ...\n", f.GetName(), f.GetDuration().Seconds())
+			log.Printf("Broadcasting %s, duration: %.0f seconds, delay time: %d ...\n", f.GetName(), f.GetDuration().Seconds(), c.delayTime)
 
 			for range ticker.C {
 				clear(buffer)
