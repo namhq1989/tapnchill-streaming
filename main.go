@@ -1,9 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 )
 
 func enableCORS(next http.Handler) http.Handler {
@@ -24,23 +26,14 @@ func enableCORS(next http.Handler) http.Handler {
 	})
 }
 
-func broadcastingChannel(name string) Channel {
-	audios, err := ListMP3Files("audios/" + name)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for i := 0; i < len(audios); i++ {
-		fmt.Printf("%d. %s duration: %.0f seconds \n", i+1, audios[i].GetName(), audios[i].GetDuration().Seconds())
-	}
-
-	channel := NewChannel("name", audios)
+func broadcastingChannel(id string) Channel {
+	channel := NewChannel(id)
 	go channel.Broadcast()
 
 	return channel
 }
 
-func broadcastingRoute(mux *http.ServeMux, id string, channel Channel) {
+func broadcastingRoute(mux *http.ServeMux, id string, channel *Channel) {
 	mux.HandleFunc("/"+id, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "audio/mpeg")
 		w.Header().Add("Connection", "keep-alive")
@@ -66,18 +59,64 @@ func broadcastingRoute(mux *http.ServeMux, id string, channel Channel) {
 	})
 }
 
+var channels = make([]*Channel, 0)
+
 func main() {
 	mux := http.NewServeMux()
 
 	chillingChannel := broadcastingChannel("chilling")
-	broadcastingRoute(mux, "chilling", chillingChannel)
+	broadcastingRoute(mux, "chilling", &chillingChannel)
+	channels = append(channels, &chillingChannel)
 
 	gamingChannel := broadcastingChannel("gaming")
-	broadcastingRoute(mux, "gaming", gamingChannel)
+	broadcastingRoute(mux, "gaming", &gamingChannel)
+	channels = append(channels, &gamingChannel)
 
 	motivatingChannel := broadcastingChannel("motivating")
-	broadcastingRoute(mux, "motivating", motivatingChannel)
+	broadcastingRoute(mux, "motivating", &motivatingChannel)
+	channels = append(channels, &motivatingChannel)
+
+	go startSendingChannelStats()
 
 	log.Println("Listening on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", enableCORS(mux)))
+}
+
+func startSendingChannelStats() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		sendChannelStats()
+	}
+}
+
+func sendChannelStats() {
+	url := "http://localhost:5555/api/webhook/channel-stats"
+
+	stats := make([]map[string]interface{}, len(channels))
+
+	for i, channel := range channels {
+		stats[i] = map[string]interface{}{
+			"id":        channel.GetID(),
+			"audiences": channel.GetNumOfConn(),
+		}
+	}
+
+	payload, err := json.Marshal(stats)
+	if err != nil {
+		log.Printf("Failed to marshal stats: %v\n", err)
+		return
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
+	if err != nil {
+		log.Printf("Failed to send channel stats: %v\n", err)
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Received non-OK response: %v\n", resp.Status)
+	}
 }

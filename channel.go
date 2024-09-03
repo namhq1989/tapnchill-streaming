@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 )
 
 type Channel struct {
-	name                string
+	id                  string
 	bufferSize          int
 	delayTime           int
 	files               []AudioContent
@@ -19,17 +20,24 @@ type Channel struct {
 	currentAudioContent *AudioContent
 }
 
-func NewChannel(name string, files []AudioContent) Channel {
-	return Channel{
-		name:                name,
+func NewChannel(id string) Channel {
+	channel := Channel{
+		id:                  id,
 		bufferSize:          8192,
 		delayTime:           150,
-		files:               files,
 		connPool:            NewConnectionPool(),
 		numOfConn:           0,
 		startedAt:           time.Now(),
 		currentAudioContent: nil,
 	}
+
+	err := channel.updateFileList()
+	if err != nil {
+		panic(err)
+	}
+
+	return channel
+
 }
 
 func (c *Channel) AddConnection(connection *Connection) {
@@ -42,17 +50,48 @@ func (c *Channel) DeleteConnection(connection *Connection) {
 	c.numOfConn--
 }
 
+func (c *Channel) updateFileList() error {
+	audios, err := ListMP3Files("audios/" + c.id)
+	if err != nil {
+		return err
+	}
+	c.files = audios
+	return nil
+}
+
 func (c *Channel) calculateDelayTime(fileInfo os.FileInfo, duration time.Duration, bufferSize int) {
 	fileSize := fileInfo.Size()
 	totalBuffers := fileSize / int64(bufferSize)
 	c.delayTime = int(duration / time.Duration(totalBuffers) / time.Millisecond)
 }
 
+func (c *Channel) shuffleFiles(files []AudioContent) []AudioContent {
+	rand.New(rand.NewSource(time.Now().UnixMilli()))
+	rand.Shuffle(len(files), func(i, j int) {
+		files[i], files[j] = files[j], files[i]
+	})
+	return files
+}
+
 func (c *Channel) Broadcast() {
-	// buffer := make([]byte, c.bufferSize)
+	var lastPlayed *AudioContent
 
 	for {
-		for _, f := range c.files {
+		updateErr := c.updateFileList()
+		if updateErr != nil {
+			log.Printf("Error updating file list: %v", updateErr)
+			panic(updateErr)
+		}
+
+		shuffledFiles := c.shuffleFiles(c.files)
+
+		if lastPlayed != nil && shuffledFiles[0].GetPath() == lastPlayed.GetPath() {
+			if len(shuffledFiles) > 1 {
+				shuffledFiles[0], shuffledFiles[1] = shuffledFiles[1], shuffledFiles[0]
+			}
+		}
+
+		for _, f := range shuffledFiles {
 			file, err := os.Open(f.GetPath())
 			if err != nil {
 				log.Printf("Error opening file %s: %v", f.GetPath(), err)
@@ -95,9 +134,13 @@ func (c *Channel) Broadcast() {
 				c.connPool.Broadcast(buffer)
 			}
 			func() { _ = file.Close() }()
+
+			lastPlayed = &f
 		}
 	}
 }
+
+func (c *Channel) GetID() string { return c.id }
 
 func (c *Channel) GetNumOfConn() int {
 	return c.numOfConn
