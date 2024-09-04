@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -81,6 +82,12 @@ func (c *Channel) Broadcast() {
 		if updateErr != nil {
 			log.Printf("Error updating file list: %v", updateErr)
 			panic(updateErr)
+		}
+
+		if len(c.files) == 0 {
+			fmt.Printf("channel %s is empty, restarting ...\n", c.id)
+			time.Sleep(1 * time.Minute)
+			continue
 		}
 
 		shuffledFiles := c.shuffleFiles(c.files)
