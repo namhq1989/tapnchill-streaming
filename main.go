@@ -64,17 +64,21 @@ var channels = make([]*Channel, 0)
 func main() {
 	mux := http.NewServeMux()
 
-	chillingChannel := broadcastingChannel("chilling")
-	broadcastingRoute(mux, "chilling", &chillingChannel)
-	channels = append(channels, &chillingChannel)
+	chillVibesChannel := broadcastingChannel("chill-vibes")
+	broadcastingRoute(mux, "chill-vibes", &chillVibesChannel)
+	channels = append(channels, &chillVibesChannel)
 
-	gamingChannel := broadcastingChannel("gaming")
-	broadcastingRoute(mux, "gaming", &gamingChannel)
-	channels = append(channels, &gamingChannel)
+	energizeChannel := broadcastingChannel("energize")
+	broadcastingRoute(mux, "energize", &energizeChannel)
+	channels = append(channels, &energizeChannel)
 
-	motivatingChannel := broadcastingChannel("motivating")
-	broadcastingRoute(mux, "motivating", &motivatingChannel)
-	channels = append(channels, &motivatingChannel)
+	focusFlowChannel := broadcastingChannel("focus-flow")
+	broadcastingRoute(mux, "focus-flow", &focusFlowChannel)
+	channels = append(channels, &focusFlowChannel)
+
+	loFiLoungeChannel := broadcastingChannel("lo-fi-lounge")
+	broadcastingRoute(mux, "lo-fi-lounge", &loFiLoungeChannel)
+	channels = append(channels, &loFiLoungeChannel)
 
 	go startSendingChannelStats()
 
