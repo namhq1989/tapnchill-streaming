@@ -26,15 +26,11 @@ func NewChannel(id string) Channel {
 		id:                  id,
 		bufferSize:          8192,
 		delayTime:           150,
+		files:               make([]AudioContent, 0),
 		connPool:            NewConnectionPool(),
 		numOfConn:           0,
 		startedAt:           time.Now(),
 		currentAudioContent: nil,
-	}
-
-	err := channel.updateFileList()
-	if err != nil {
-		panic(err)
 	}
 
 	return channel
@@ -52,7 +48,7 @@ func (c *Channel) DeleteConnection(connection *Connection) {
 }
 
 func (c *Channel) updateFileList() error {
-	audios, err := ListMP3Files("audios/" + c.id)
+	audios, err := ListMP3Files(c.id)
 	if err != nil {
 		return err
 	}
@@ -85,9 +81,11 @@ func (c *Channel) Broadcast() {
 		}
 
 		if len(c.files) == 0 {
-			fmt.Printf("channel %s is empty, restarting ...\n", c.id)
+			fmt.Printf("channel [%s] is empty, restarting ...\n", c.id)
 			time.Sleep(1 * time.Minute)
 			continue
+		} else {
+			fmt.Printf("channel [%s] has %d files\n", c.id, len(c.files))
 		}
 
 		shuffledFiles := c.shuffleFiles(c.files)
@@ -123,14 +121,14 @@ func (c *Channel) Broadcast() {
 			tempFile := bytes.NewReader(content)
 			ticker := time.NewTicker(time.Millisecond * time.Duration(c.delayTime))
 
-			log.Printf("Broadcasting %s, duration: %.0f seconds, delay time: %d ...\n", f.GetName(), f.GetDuration().Seconds(), c.delayTime)
+			log.Printf("[%s] Broadcasting %s, duration: %.0f seconds, delay time: %d ...\n", c.id, f.GetName(), f.GetDuration().Seconds(), c.delayTime)
 
 			for range ticker.C {
 				clear(buffer)
 
 				_, err = tempFile.Read(buffer)
 				if err == io.EOF {
-					log.Printf("%s ended, move to next file\n", f.GetName())
+					log.Printf("[%s] %s ended, move to next file\n", c.id, f.GetName())
 
 					ticker.Stop()
 
