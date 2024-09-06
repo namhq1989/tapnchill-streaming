@@ -62,14 +62,16 @@ func broadcastingRoute(mux *http.ServeMux, id string, channel *Channel) {
 }
 
 var channels = make([]*Channel, 0)
-var channelIDs = []string{"chill-vibes", "energize", "focus-flow", "lo-fi-lounge"}
+var channelIDs = []string{"chill-vibes", "energize", "focus-flow", "mix"}
 
 func main() {
 	mux := http.NewServeMux()
 
 	for _, id := range channelIDs {
-		if err := os.MkdirAll("audios/"+id, os.ModePerm); err != nil {
-			panic(fmt.Errorf("failed to create directory: %v", err))
+		if id != "mix" {
+			if err := os.MkdirAll("audios/"+id, os.ModePerm); err != nil {
+				panic(fmt.Errorf("failed to create directory: %v", err))
+			}
 		}
 
 		channel := broadcastingChannel(id)
@@ -92,8 +94,10 @@ func startSendingChannelStats() {
 	}
 }
 
+var tapnchillServer = os.Getenv("TAPNCHILL_SERVER")
+
 func sendChannelStats() {
-	url := "http://localhost:5555/api/webhook/channel-stats"
+	url := fmt.Sprintf("%s/api/webhook/channel-stats", tapnchillServer)
 
 	stats := make([]map[string]interface{}, len(channels))
 
