@@ -8,10 +8,39 @@ import (
 	"github.com/hajimehoshi/go-mp3"
 )
 
-func ListMP3Files(dir string) ([]AudioContent, error) {
+func ListMP3Files(id string) ([]AudioContent, error) {
+	var (
+		contents []AudioContent
+		err      error
+	)
+
+	if id != "mix" {
+		contents, err = walkDir(id)
+		if err != nil {
+			return nil, err
+		}
+		return contents, nil
+	}
+
+	for _, channel := range channelIDs {
+		if channel == "mix" {
+			continue
+		}
+
+		channelContents, walkDirErr := walkDir(channel)
+		if walkDirErr != nil {
+			return nil, walkDirErr
+		}
+		contents = append(contents, channelContents...)
+	}
+
+	return contents, nil
+}
+
+func walkDir(id string) ([]AudioContent, error) {
 	var contents []AudioContent
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk("audios/"+id, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
