@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -60,25 +62,20 @@ func broadcastingRoute(mux *http.ServeMux, id string, channel *Channel) {
 }
 
 var channels = make([]*Channel, 0)
+var channelIDs = []string{"chill-vibes", "energize", "focus-flow", "lo-fi-lounge"}
 
 func main() {
 	mux := http.NewServeMux()
 
-	chillVibesChannel := broadcastingChannel("chill-vibes")
-	broadcastingRoute(mux, "chill-vibes", &chillVibesChannel)
-	channels = append(channels, &chillVibesChannel)
+	for _, id := range channelIDs {
+		if err := os.MkdirAll("audios/"+id, os.ModePerm); err != nil {
+			panic(fmt.Errorf("failed to create directory: %v", err))
+		}
 
-	energizeChannel := broadcastingChannel("energize")
-	broadcastingRoute(mux, "energize", &energizeChannel)
-	channels = append(channels, &energizeChannel)
-
-	focusFlowChannel := broadcastingChannel("focus-flow")
-	broadcastingRoute(mux, "focus-flow", &focusFlowChannel)
-	channels = append(channels, &focusFlowChannel)
-
-	loFiLoungeChannel := broadcastingChannel("lo-fi-lounge")
-	broadcastingRoute(mux, "lo-fi-lounge", &loFiLoungeChannel)
-	channels = append(channels, &loFiLoungeChannel)
+		channel := broadcastingChannel(id)
+		broadcastingRoute(mux, id, &channel)
+		channels = append(channels, &channel)
+	}
 
 	go startSendingChannelStats()
 
