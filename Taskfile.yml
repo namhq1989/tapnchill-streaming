@@ -3,5 +3,10 @@ version: '3'
 tasks:
   run:
     cmds:
-#      - doppler run -- go run cmd/*.go
       - go run *.go
+
+  build:
+    cmds:
+      - docker build -t namhq1989/tapnchill-streaming:latest -t namhq1989/tapnchill-streaming:$(git rev-parse --short HEAD) .
+      - docker push namhq1989/tapnchill-streaming:latest
+      - docker push namhq1989/tapnchill-streaming:$(git rev-parse --short HEAD)

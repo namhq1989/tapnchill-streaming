@@ -11,7 +11,7 @@ RUN go mod tidy
 COPY . .
 
 # Build the Go application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./*.go
 
 FROM alpine:latest
 
