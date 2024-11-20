@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"time"
 )
 
 func enableCORS(next http.Handler) http.Handler {
@@ -79,49 +76,49 @@ func main() {
 		channels = append(channels, &channel)
 	}
 
-	go startSendingChannelStats()
+	// go startSendingChannelStats()
 
 	log.Println("Listening on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", enableCORS(mux)))
 }
 
-func startSendingChannelStats() {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
+// func startSendingChannelStats() {
+// 	ticker := time.NewTicker(1 * time.Minute)
+// 	defer ticker.Stop()
+//
+// 	for range ticker.C {
+// 		sendChannelStats()
+// 	}
+// }
 
-	for range ticker.C {
-		sendChannelStats()
-	}
-}
-
-var tapnchillServer = os.Getenv("TAPNCHILL_SERVER")
-
-func sendChannelStats() {
-	url := fmt.Sprintf("%s/api/webhook/channel-stats", tapnchillServer)
-
-	stats := make([]map[string]interface{}, len(channels))
-
-	for i, channel := range channels {
-		stats[i] = map[string]interface{}{
-			"id":        channel.GetID(),
-			"audiences": channel.GetNumOfConn(),
-		}
-	}
-
-	payload, err := json.Marshal(stats)
-	if err != nil {
-		log.Printf("Failed to marshal stats: %v\n", err)
-		return
-	}
-
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
-	if err != nil {
-		log.Printf("Failed to send channel stats: %v\n", err)
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("Received non-OK response: %v\n", resp.Status)
-	}
-}
+// var tapnchillServer = os.Getenv("TAPNCHILL_SERVER")
+//
+// func sendChannelStats() {
+// 	url := fmt.Sprintf("%s/api/webhook/channel-stats", tapnchillServer)
+//
+// 	stats := make([]map[string]interface{}, len(channels))
+//
+// 	for i, channel := range channels {
+// 		stats[i] = map[string]interface{}{
+// 			"id":        channel.GetID(),
+// 			"audiences": channel.GetNumOfConn(),
+// 		}
+// 	}
+//
+// 	payload, err := json.Marshal(stats)
+// 	if err != nil {
+// 		log.Printf("Failed to marshal stats: %v\n", err)
+// 		return
+// 	}
+//
+// 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
+// 	if err != nil {
+// 		log.Printf("Failed to send channel stats: %v\n", err)
+// 		return
+// 	}
+// 	defer func() { _ = resp.Body.Close() }()
+//
+// 	if resp.StatusCode != http.StatusOK {
+// 		log.Printf("Received non-OK response: %v\n", resp.Status)
+// 	}
+// }
