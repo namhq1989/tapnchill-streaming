@@ -14,27 +14,33 @@ func ListMP3Files(id string) ([]AudioContent, error) {
 		err      error
 	)
 
-	if id != "mix" {
-		contents, err = walkDir(id)
-		if err != nil {
-			return nil, err
-		}
-		return contents, nil
+	contents, err = walkDir(id)
+	if err != nil {
+		return nil, err
 	}
-
-	for _, channel := range channelIDs {
-		if channel == "mix" {
-			continue
-		}
-
-		channelContents, walkDirErr := walkDir(channel)
-		if walkDirErr != nil {
-			return nil, walkDirErr
-		}
-		contents = append(contents, channelContents...)
-	}
-
 	return contents, nil
+
+	// if id != "mix" {
+	// 	contents, err = walkDir(id)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	return contents, nil
+	// }
+	//
+	// for _, channel := range channelIDs {
+	// 	if channel == "mix" {
+	// 		continue
+	// 	}
+	//
+	// 	channelContents, walkDirErr := walkDir(channel)
+	// 	if walkDirErr != nil {
+	// 		return nil, walkDirErr
+	// 	}
+	// 	contents = append(contents, channelContents...)
+	// }
+
+	// return contents, nil
 }
 
 func walkDir(id string) ([]AudioContent, error) {

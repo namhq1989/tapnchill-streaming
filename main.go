@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 )
 
 func enableCORS(next http.Handler) http.Handler {
@@ -59,17 +57,17 @@ func broadcastingRoute(mux *http.ServeMux, id string, channel *Channel) {
 }
 
 var channels = make([]*Channel, 0)
-var channelIDs = []string{"chill-vibes", "energize", "focus-flow", "mix"}
+var channelIDs = []string{"mix"}
 
 func main() {
 	mux := http.NewServeMux()
 
 	for _, id := range channelIDs {
-		if id != "mix" {
-			if err := os.MkdirAll("audios/"+id, os.ModePerm); err != nil {
-				panic(fmt.Errorf("failed to create directory: %v", err))
-			}
-		}
+		// if id != "mix" {
+		// 	if err := os.MkdirAll("audios/"+id, os.ModePerm); err != nil {
+		// 		panic(fmt.Errorf("failed to create directory: %v", err))
+		// 	}
+		// }
 
 		channel := broadcastingChannel(id)
 		broadcastingRoute(mux, id, &channel)
